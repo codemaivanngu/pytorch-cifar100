@@ -17,21 +17,22 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
 from conf import settings
-from cangjie_utils import  get_test_dataloader
-from models.squeezenet import SqueezeNet
+from cangjie_utils import  get_test_loader
+from models.squeezenet import squeezenet
+from utils import get_network
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-net', type=str, required=True, help='net type')
+    parser.add_argument('-net', type=str, default='squeezenet', help='net type')
     parser.add_argument('-weights', type=str, required=True, help='the weights file you want to test')
     parser.add_argument('-gpu', action='store_true', default=False, help='use gpu or not')
-    parser.add_argument('-b', type=int, default=256, help='batch size for dataloader')
+    parser.add_argument('-b', type=int, default=64, help='batch size for dataloader')
     args = parser.parse_args()
 
-    net = SqueezeNet(class_num=952)
-
-    ETL952TestLoader = get_test_dataloader(
+    net = get_network(args)
+    
+    ETL952TestLoader = get_test_loader(
         num_workers=4,
         batch_size=args.b,
     )
@@ -51,8 +52,8 @@ if __name__ == '__main__':
             if args.gpu:
                 image = image.cuda()
                 label = label.cuda()
-                print('GPU INFO.....')
-                print(torch.cuda.memory_summary(), end='')
+                # print('GPU INFO.....')
+                # print(torch.cuda.memory_summary(), end='')
 
 
             output = net(image)

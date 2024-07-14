@@ -1,7 +1,7 @@
 from cangjie_dataset import ETL952Train, ETL952Test, ETL952Val, ETL952Labels
 from torch.utils.data import DataLoader
 
-def get_training_loader(batch_size=64, num_workers=4, shuffle=True):
+def get_training_loader(batch_size=128, num_workers=4, shuffle=True):
     """
     return training data loader
     
@@ -18,7 +18,7 @@ def get_training_loader(batch_size=64, num_workers=4, shuffle=True):
     train_data_loader = DataLoader(train_set, batch_size=batch_size, shuffle=shuffle,num_workers=num_workers)
     return train_data_loader
 
-def get_test_loader(batch_size=64, num_workers=4, shuffle=True):
+def get_test_loader(batch_size=128, num_workers=4, shuffle=True):
     """
     return test data loader
     

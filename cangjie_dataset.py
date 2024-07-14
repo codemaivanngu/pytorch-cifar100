@@ -24,7 +24,8 @@ class ETL952Dataset(Dataset):
 
         # Load all images into memory
         for class_idx, class_name in enumerate(self.classes):
-            print("start to load", class_name)
+            if class_idx%10==0:
+                print(f"start loading class {class_name}/952 from {folder_name}")
             class_path = os.path.join(self.root_dir, class_name)
             for img_name in os.listdir(class_path):
                 if img_name.lower().endswith(('.png', )):
@@ -72,16 +73,16 @@ class ETL952Labels():
         self.data=pd.read_csv(path,sep="\s+",header=0,names=['label', 'character', 'JISx0208', 'UTF8', 'Cangjie'])
 
 
-from torch.utils.data import DataLoader
-# train_set = ETL952Train(root_dir="pytorch-cifar100", transform=transforms.ToTensor())
+# from torch.utils.data import DataLoader
+# # train_set = ETL952Train(root_dir="pytorch-cifar100", transform=transforms.ToTensor())
 
-train_set = ETL952Train(root_dir="", transform=transforms.ToTensor())
-train_loader = DataLoader(train_set, batch_size=64, shuffle=True,num_workers=8)
+# train_set = ETL952Train(root_dir="", transform=transforms.ToTensor())
+# train_loader = DataLoader(train_set, batch_size=128, shuffle=True,num_workers=4)
 # train_loader = DataLoader(train_set, batch_size=64, shuffle=True)
 
 # print("total number of train data: ", len(train_set))
 
-for images, labels in train_loader:
-    print("images shape: ", images.shape)
-    print("labels shape: ", labels.shape)
-    break
+# for images, labels in train_loader:
+#     print("images shape: ", images.shape)
+#     print("labels shape: ", labels.shape)
+#     break

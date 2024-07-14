@@ -19,8 +19,10 @@ def train(epoch):
     for batch_index, (images, labels) in enumerate(ETL952TrainLoader):
 
         if args.gpu:
-            labels = labels.cuda()
+            labels = labels.cuda().long()
             images = images.cuda()
+        else:
+            labels = labels.long()
 
         optimizer.zero_grad()
         outputs = net(images)
@@ -35,10 +37,11 @@ def train(epoch):
                 writer.add_scalar('LastLayerGradients/grad_norm2_weights', para.grad.norm(), n_iter)
             if 'bias' in name:
                 writer.add_scalar('LastLayerGradients/grad_norm2_bias', para.grad.norm(), n_iter)
-        print('Training Epoch: {epoch} [{trained_samples}/{total_samples}]\tLoss: {:0.4f}\tLR: {:0.6f}'.format(
+        print('Training Epoch: {epoch}/{total_epochs} [{trained_samples}/{total_samples}]\tLoss: {:0.4f}\tLR: {:0.6f}'.format(
             loss.item(),
             optimizer.param_groups[0]['lr'],
             epoch=epoch,
+            total_epochs=settings.EPOCHS,
             trained_samples=batch_index * args.batch_size + len(images),
             total_samples=len(ETL952TrainLoader.dataset)
         ))
@@ -68,8 +71,11 @@ def eval_training(epoch=0, tb=True):
 
     for batch_index, (images, labels) in enumerate(ETL952TestLoader):
         if args.gpu:
+            labels = labels.cuda().long()
             images = images.cuda()
-            labels = labels.cuda()
+        else:
+            labels = labels.long()
+            
 
         outputs = net(images)
         loss = loss_function(outputs, labels)
@@ -96,7 +102,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-net', default='squeezenet', type=str, help='net type')
     parser.add_argument('-gpu', type=bool, default=False, help='use gpu or not')
-    parser.add_argument('-batch_size', type=int, default=256, help='batch size for dataloader')
+    parser.add_argument('-batch_size', type=int, default=64, help='batch size for dataloader')
     parser.add_argument('-warm', type=int, default=1, help='warm up training phase')
     parser.add_argument('-lr', type=float, default=0.1, help='initial learning rate')
     parser.add_argument('-resume', action='store_true', default=False, help='resume training')
