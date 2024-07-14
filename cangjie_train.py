@@ -1,5 +1,5 @@
 from cangjie_utils import get_training_loader,get_test_loader
-from models.squeezenet import SqueezeNet
+from models.squeezenet import squeezenet
 from time import perf_counter
 import argparse
 import os
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
 
     #model
-    net = SqueezeNet(class_num=952)
+    net = squeezenet()
     #data
     ETL952TrainLoader = get_training_loader(batch_size=args.batch_size)
     ETL952TestLoader = get_test_loader(batch_size=args.batch_size)

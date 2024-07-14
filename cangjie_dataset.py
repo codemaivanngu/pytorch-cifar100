@@ -1,12 +1,13 @@
 import os
+import numpy as np
 from PIL import Image
 import torch
 from torch.utils.data import Dataset
-from torchvision import transforms 
+from torchvision import transforms
 
 class ETL952Dataset(Dataset):
     def __init__(self, root_dir, folder_name, transform=None):
-        self.root_dir = os.path.join(root_dir,'data','etl_952_singlechar_size_64','etl_952_singlechar_size_64',folder_name)
+        self.root_dir = os.path.join(root_dir, 'data', 'etl_952_singlechar_size_64', 'etl_952_singlechar_size_64', folder_name)
         
         if transform is None:
             self.transform = transforms.Compose([
@@ -17,30 +18,40 @@ class ETL952Dataset(Dataset):
         else:
             self.transform = transform
         
-        # self.transform = transform
         self.classes = [str(i) for i in range(952)]
-        self.images = [] #list of path to images
-        self.labels = [] #list of class label corresponding to above images
+        self.data = []  # Will store image data
+        self.labels = []  # Will store labels
 
+        # Load all images into memory
         for class_idx, class_name in enumerate(self.classes):
             class_path = os.path.join(self.root_dir, class_name)
             for img_name in os.listdir(class_path):
                 if img_name.lower().endswith(('.png', )):
-                    self.images.append(os.path.join(class_path, img_name))
+                    img_path = os.path.join(class_path, img_name)
+                    image = Image.open(img_path).convert('RGB')
+                    image = image.resize((32, 32))  # Resize to 32x32
+                    image_array = np.array(image)
+                    self.data.append(image_array)
                     self.labels.append(class_idx)
-    
+
+        # Convert to numpy arrays
+        self.data = np.array(self.data)
+        self.labels = np.array(self.labels)
+
     def __len__(self):
-        return len(self.images)
+        return len(self.labels)
     
     def __getitem__(self, idx):
-        img_path = self.images[idx]
-        image = Image.open(img_path).convert('RGB')
+        image = self.data[idx]
         label = self.labels[idx]
+
+        # Convert numpy array to PIL Image
+        image = Image.fromarray(image)
 
         if self.transform:
             image = self.transform(image)
 
-        return image,label
+        return image, label
 
 class ETL952Train(ETL952Dataset):
     def __init__(self, root_dir, transform=None):
