@@ -48,10 +48,11 @@ class Fire(nn.Module):
 class SqueezeNet(nn.Module):
 
     """mobile net with simple bypass"""
-    def __init__(self, class_num=100):
+    def __init__(self, class_num=952):
 
         super().__init__()
         self.stem = nn.Sequential(
+            # nn.MaxPool2d(2, 2),
             nn.Conv2d(3, 96, 3, padding=1),
             nn.BatchNorm2d(96),
             nn.ReLU(inplace=True),
@@ -66,13 +67,12 @@ class SqueezeNet(nn.Module):
         self.fire7 = Fire(384, 384, 48)
         self.fire8 = Fire(384, 512, 64)
         self.fire9 = Fire(512, 512, 64)
-
         self.conv10 = nn.Conv2d(512, class_num, 1)
         self.avg = nn.AdaptiveAvgPool2d(1)
         self.maxpool = nn.MaxPool2d(2, 2)
 
     def forward(self, x):
-        x = self.stem(x)
+        x = self.stem(x)       
 
         f2 = self.fire2(x)
         f3 = self.fire3(f2) + f2

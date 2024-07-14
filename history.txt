@@ -1,0 +1,7 @@
+C:/Users/Tung/.conda/envs/w2_2/python.exe e:/CinnamonAI/W2_2/pytorch-cifar100/cangjie-dataset.py
+python test.py -net squeezenet -weight pytorch-cifar100\checkpoint\squeezenet\Saturday_13_July_2024_18h_05m_14s\squeezenet-200-regular.pth
+cd pytorch-cifar100
+python test.py -net squeezenet -weight pytorch-cifar100\checkpoint\squeezenet\Saturday_13_July_2024_18h_05m_14s\squeezenet-200-regular.pth
+C:/Users/Tung/.conda/envs/w2_2/python.exe e:/CinnamonAI/W2_2/pytorch-cifar100/test.py
+python test.py -net squeezenet -weight checkpoint\squeezenet\Saturday_13_July_2024_18h_05m_14s\squeezenet-200-regular.pth
+doskey /HISTORY > history.txt

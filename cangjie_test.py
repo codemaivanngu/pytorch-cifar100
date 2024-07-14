@@ -17,7 +17,8 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
 from conf import settings
-from utils import get_network, get_test_dataloader
+from cangjie_utils import  get_test_dataloader
+from models.squeezenet import SqueezeNet
 
 if __name__ == '__main__':
 
@@ -25,15 +26,12 @@ if __name__ == '__main__':
     parser.add_argument('-net', type=str, required=True, help='net type')
     parser.add_argument('-weights', type=str, required=True, help='the weights file you want to test')
     parser.add_argument('-gpu', action='store_true', default=False, help='use gpu or not')
-    parser.add_argument('-b', type=int, default=16, help='batch size for dataloader')
+    parser.add_argument('-b', type=int, default=256, help='batch size for dataloader')
     args = parser.parse_args()
 
-    net = get_network(args)
+    net = SqueezeNet(class_num=952)
 
-    cifar100_test_loader = get_test_dataloader(
-        settings.CIFAR100_TRAIN_MEAN,
-        settings.CIFAR100_TRAIN_STD,
-        #settings.CIFAR100_PATH,
+    ETL952TestLoader = get_test_dataloader(
         num_workers=4,
         batch_size=args.b,
     )
@@ -47,8 +45,8 @@ if __name__ == '__main__':
     total = 0
 
     with torch.no_grad():
-        for n_iter, (image, label) in enumerate(cifar100_test_loader):
-            print("iteration: {}\ttotal {} iterations".format(n_iter + 1, len(cifar100_test_loader)))
+        for n_iter, (image, label) in enumerate(ETL952TestLoader):
+            print("iteration: {}\ttotal {} iterations".format(n_iter + 1, len(ETL952TestLoader)))
 
             if args.gpu:
                 image = image.cuda()
@@ -74,8 +72,8 @@ if __name__ == '__main__':
         print(torch.cuda.memory_summary(), end='')
 
     print()
-    print("Top 1 err: ", 1 - correct_1 / len(cifar100_test_loader.dataset))
-    print("Top 5 err: ", 1 - correct_5 / len(cifar100_test_loader.dataset))
+    print("Top 1 err: ", 1 - correct_1 / len(ETL952TestLoader.dataset))
+    print("Top 5 err: ", 1 - correct_5 / len(ETL952TestLoader.dataset))
     print("Parameter numbers: {}".format(sum(p.numel() for p in net.parameters())))
 
 
