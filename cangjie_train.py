@@ -101,13 +101,16 @@ if __name__ == '__main__':
     parser.add_argument('-lr', type=float, default=0.1, help='initial learning rate')
     parser.add_argument('-resume', action='store_true', default=False, help='resume training')
     args = parser.parse_args()
-
+    print("is it ok?")
 
     #model
     net = squeezenet()
+    print("assigned model")
     #data
+    print("start loading data")
     ETL952TrainLoader = get_training_loader(batch_size=args.batch_size)
     ETL952TestLoader = get_test_loader(batch_size=args.batch_size)
+    print("data loaded")
     #setup model
 
     loss_function = torch.nn.CrossEntropyLoss()
