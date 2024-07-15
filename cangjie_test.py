@@ -19,18 +19,30 @@ from torch.utils.data import DataLoader
 from conf import settings
 from cangjie_utils import  get_test_loader
 from models.squeezenet import squeezenet
+from cangjie_models.sqnetR import sqnetr
+from cangjie_models.sqnetC9 import sqnetc9
+from cangjie_models.sqnetC3579 import sqnetc3579
+from cangjie_models.sqnetF4C3579 import sqnetf4c3579
+from cangjie_models.sqnetR4 import sqnetr4
+from cangjie_models.sqnetR4C3579 import sqnetr4c3579
+from cangjie_models.sqnetD4 import sqnetd4
+from cangjie_models.sqnetD4C3579 import sqnetd4c3579
 from utils import get_network
+import numpy as np
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-net', type=str, default='squeezenet', help='net type')
+    parser.add_argument('-net', type=str, default='sqnetd4c3579', help='net type')
     parser.add_argument('-weights', type=str, required=True, help='the weights file you want to test')
     parser.add_argument('-gpu', action='store_true', default=False, help='use gpu or not')
     parser.add_argument('-b', type=int, default=64, help='batch size for dataloader')
     args = parser.parse_args()
 
-    net = get_network(args)
+    net = sqnetd4c3579()
+    if args.gpu:
+        net = net.cuda()
+    
     
     ETL952TestLoader = get_test_loader(
         num_workers=4,
@@ -44,8 +56,11 @@ if __name__ == '__main__':
     correct_1 = 0.0
     correct_5 = 0.0
     total = 0
+     
+    cnt = np.ndarray([952, 952])
 
     with torch.no_grad():
+        
         for n_iter, (image, label) in enumerate(ETL952TestLoader):
             print("iteration: {}\ttotal {} iterations".format(n_iter + 1, len(ETL952TestLoader)))
 
@@ -57,6 +72,7 @@ if __name__ == '__main__':
 
 
             output = net(image)
+            # print(output.shape)
             _, pred = output.topk(5, 1, largest=True, sorted=True)
 
             label = label.view(label.size(0), -1).expand_as(pred)

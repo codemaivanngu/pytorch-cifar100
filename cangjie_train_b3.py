@@ -1,4 +1,4 @@
-from cangjie_utils import get_training_loader,get_val_loader
+from cangjie_utils_b3 import get_training_loader,get_val_loader
 from models.squeezenet import squeezenet
 from time import perf_counter
 import argparse
@@ -12,29 +12,50 @@ from conf import settings
 from utils import  WarmUpLR, \
     most_recent_folder, most_recent_weights, last_epoch, best_acc_weights
 from torch.utils.tensorboard import SummaryWriter
-from cangjie_models.sqnetR import sqnetr
-from cangjie_models.sqnetC9 import sqnetc9
-from cangjie_models.sqnetC3579 import sqnetc3579
-from cangjie_models.sqnetF4 import sqnetf4
-from cangjie_models.sqnetF4C3579 import sqnetf4c3579
+import torch.nn.functional as F
+
 from cangjie_models.sqnetR4 import sqnetr4
 from cangjie_models.sqnetR4C3579 import sqnetr4c3579
 from cangjie_models.sqnetD4 import sqnetd4
 from cangjie_models.sqnetD4C3579 import sqnetd4c3579
+from cangjie_models.sqnetR4C3579RNN import sqnetr4c3579rnn
+
 def train(epoch):
     start_time = perf_counter()
     net.train()
-    for batch_index, (images, labels) in enumerate(ETL952TrainLoader):
+    for batch_index, (images, labels, string_labels_padded, target_lengths) in enumerate(ETL952TrainLoader):
 
         if args.gpu:
             labels = labels.cuda().long()
             images = images.cuda()
+            string_labels_padded = string_labels_padded.cuda()
+            target_lengths = target_lengths.cuda()
         else:
             labels = labels.long()
+            target_lengths = target_lengths.long()
+
+
 
         optimizer.zero_grad()
-        outputs = net(images)
-        loss = loss_function(outputs, labels)
+        x_cls, x_seq = net(images)
+        # loss = loss_function(outputs, labels)
+        # loss.backward()
+        # optimizer.step()
+
+        
+
+        loss_class = criterion_class(x_cls, labels)
+
+        batch_size = x_seq.size(0)
+        sequence_length = x_seq.size(1)
+        input_lengths = torch.full((batch_size,), sequence_length, dtype=torch.long)
+        print("x_seq shape:", x_seq.shape)
+        print("string_labels_padded shape:", string_labels_padded.shape)
+        print("input_lengths shape:", input_lengths.shape)
+        print("target_lengths shape:", target_lengths.shape)
+        loss_seq = criterion_seq(x_seq.log_softmax(2), string_labels_padded, input_lengths, target_lengths)
+        
+        loss = loss_class + loss_seq
         loss.backward()
         optimizer.step()
 
@@ -70,46 +91,81 @@ def train(epoch):
         f.write('epoch {} training time consumed: {:.2f}s\n'.format(epoch, finish_time - start_time))
     print('epoch {} training time consumed: {:.2f}s'.format(epoch, finish_time - start_time))
 
+import torch
+from time import perf_counter
+from torch.nn.utils.rnn import pad_sequence
+
 @torch.no_grad()
 def eval_training(epoch=0, tb=True):
-
     start_time = perf_counter()
     net.eval()
-    test_loss = 0.0 # cost function error
+    test_loss_class = 0.0  # Classification loss
+    test_loss_seq = 0.0    # Sequence loss
     correct = 0.0
+    total_sequences = 0
+    correct_sequences = 0
 
-    for batch_index, (images, labels) in enumerate(ETL952ValLoader):
-        if args.gpu:
-            labels = labels.cuda().long()
+    for batch_index, (images, class_labels, string_labels_padded, target_lengths) in enumerate(ETL952ValLoader):
+        if torch.cuda.is_available():
             images = images.cuda()
-        else:
-            labels = labels.long()
-            
+            class_labels = class_labels.cuda().long()
+            string_labels_padded = string_labels_padded.cuda()
+            target_lengths = target_lengths.cuda()
         
-        outputs = net(images)
-        loss = loss_function(outputs, labels)
-        test_loss += loss.item()
-        _, preds = outputs.max(1)
-        correct += preds.eq(labels).sum()
+        # Forward pass
+        outputs_class, outputs_seq = net(images)
+        
+        # Classification loss
+        loss_class = criterion_class(outputs_class, class_labels)
+        
+        # Sequence loss
+        loss_seq = criterion_seq(outputs_seq.log_softmax(2), string_labels_padded, torch.full((outputs_seq.size(0),), outputs_seq.size(1), dtype=torch.long).to("cuda"), target_lengths)
+        
+        # Accumulate losses
+        test_loss_class += loss_class.item()
+        test_loss_seq += loss_seq.item()
+        
+        # Calculate accuracy
+        _, preds = outputs_class.max(1)
+        correct += preds.eq(class_labels).sum().item()
+        
+        # Evaluate sequence prediction accuracy (pseudo code, needs actual implementation)
+        # Here we would compare the predicted sequences with the ground truth sequences
+        # This part of accuracy calculation is simplified and needs to be replaced with actual evaluation logic
+        for i in range(len(string_labels_padded)):
+            predicted_sequence = outputs_seq.argmax(dim=2)[i]
+            target_sequence = string_labels_padded[i, :target_lengths[i]]
+            if torch.equal(predicted_sequence[:len(target_sequence)], target_sequence):
+                correct_sequences += 1
+            total_sequences += 1
 
     finish_time = perf_counter()
+    
+    # Print results
     print('Evaluating Network.....')
-    print('Epoch: {}, Test Loss: {:.4f}, Test Accuracy: {:.4f}, Time consumed:{:.2f}s'.format(
-            epoch, test_loss / len(ETL952ValLoader.dataset),
-            correct.float() / len(ETL952ValLoader.dataset),
-            finish_time - start_time
-        ))
-    print()
+    print('Epoch: {}, Classification Test Loss: {:.4f}, Sequence Test Loss: {:.4f}, Test Accuracy: {:.4f}, Sequence Accuracy: {:.4f}, Time consumed: {:.2f}s'.format(
+        epoch, 
+        test_loss_class / len(ETL952ValLoader.dataset),
+        test_loss_seq / len(ETL952ValLoader.dataset),
+        correct / len(ETL952ValLoader.dataset),
+        correct_sequences / total_sequences if total_sequences > 0 else 0,
+        finish_time - start_time
+    ))
+    
+    # TensorBoard logging
     if tb:
-        writer.add_scalar('Test/Average loss', test_loss / len(ETL952ValLoader.dataset), epoch)
-        writer.add_scalar('Test/Accuracy', correct.float() / len(ETL952ValLoader.dataset), epoch)
+        writer.add_scalar('Test/Classification Average loss', test_loss_class / len(ETL952ValLoader.dataset), epoch)
+        writer.add_scalar('Test/Sequence Average loss', test_loss_seq / len(ETL952ValLoader.dataset), epoch)
+        writer.add_scalar('Test/Accuracy', correct / len(ETL952ValLoader.dataset), epoch)
+        writer.add_scalar('Test/Sequence Accuracy', correct_sequences / total_sequences if total_sequences > 0 else 0, epoch)
+    
+    return correct / len(ETL952ValLoader.dataset), correct_sequences / total_sequences if total_sequences > 0 else 0
 
-    return correct.float() / len(ETL952ValLoader.dataset)
 
 if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('-net', default='sqnetd4c3579', type=str, help='net type')
+    parser.add_argument('-net', default='sqnetr4c3579rnn', type=str, help='net type')
     parser.add_argument('-gpu', type=bool, default=False, help='use gpu or not')
     parser.add_argument('-batch_size', type=int, default=64, help='batch size for dataloader')
     parser.add_argument('-warm', type=int, default=1, help='warm up training phase')
@@ -122,7 +178,7 @@ if __name__ == '__main__':
     
 
     #model
-    net = sqnetd4c3579()
+    net = sqnetr4c3579rnn()
     file_name = "net_ver"+current_time+".log"
     net_ver_path = os.path.join('net_ver',file_name)
     if not os.path.exists('net_ver'):
@@ -146,13 +202,24 @@ if __name__ == '__main__':
 
     #setup model
 
-    loss_function = torch.nn.CrossEntropyLoss()
+    # loss_function = torch.nn.CrossEntropyLoss()
+    criterion_class = torch.nn.CrossEntropyLoss()
+    criterion_seq = torch.nn.CTCLoss(blank=0)
+
     optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
     train_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=settings.MILESTONES, gamma=0.2) #learning rate decay
     iter_per_epoch = len(ETL952TrainLoader)
     warmup_scheduler = WarmUpLR(optimizer, iter_per_epoch * args.warm)
-
     
+    
+
+    # def ctc_loss(y_true, y_pred, input_lengths, target_lengths):
+    #     return F.ctc_loss(y_pred, y_true, input_lengths, target_lengths)
+
+    # def combined_loss(class_pred, class_true, seq_pred, seq_true, input_lengths, target_lengths):
+    #     classification_loss = F.cross_entropy(class_pred, class_true)
+    #     sequence_loss = ctc_loss(seq_true, seq_pred, input_lengths, target_lengths)
+    #     return classification_loss + sequence_loss
 
     if args.resume:
         recent_folder = most_recent_folder(os.path.join(settings.CHECKPOINT_PATH, args.net), fmt=settings.DATE_FORMAT)

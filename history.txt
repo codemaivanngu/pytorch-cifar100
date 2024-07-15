@@ -1,7 +1,7 @@
-C:/Users/Tung/.conda/envs/w2_2/python.exe e:/CinnamonAI/W2_2/pytorch-cifar100/cangjie-dataset.py
-python test.py -net squeezenet -weight pytorch-cifar100\checkpoint\squeezenet\Saturday_13_July_2024_18h_05m_14s\squeezenet-200-regular.pth
-cd pytorch-cifar100
-python test.py -net squeezenet -weight pytorch-cifar100\checkpoint\squeezenet\Saturday_13_July_2024_18h_05m_14s\squeezenet-200-regular.pth
-C:/Users/Tung/.conda/envs/w2_2/python.exe e:/CinnamonAI/W2_2/pytorch-cifar100/test.py
-python test.py -net squeezenet -weight checkpoint\squeezenet\Saturday_13_July_2024_18h_05m_14s\squeezenet-200-regular.pth
+python cangjie_train.py -gpu True
+conda deactivate
+conda activate w2_2
+python cangjie_train.py -gpu True
+python cangjie_test.py -weight checkpoint\squeezenet\Monday_15_July_2024_00h_34m_50s\squeezenet-7-best.pth -gpu
+python cangjie_train.py -gpu True
 doskey /HISTORY > history.txt

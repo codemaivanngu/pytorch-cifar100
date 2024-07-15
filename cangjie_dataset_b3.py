@@ -4,11 +4,12 @@ from PIL import Image
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
+import pandas as pd
 
 class ETL952Dataset(Dataset):
     def __init__(self, root_dir, folder_name, transform=None):
         self.root_dir = os.path.join(root_dir, 'data', 'etl_952_singlechar_size_64', 'etl_952_singlechar_size_64', folder_name)
-        
+        self.dict_file_path = os.path.join(root_dir, 'data', 'etl_952_singlechar_size_64', 'etl_952_singlechar_size_64',"952_labels.txt")
         if transform is None:
             self.transform = transforms.Compose([
                 transforms.Resize((32, 32)),  # Resize to match SqueezeNet input size
@@ -21,6 +22,10 @@ class ETL952Dataset(Dataset):
         self.classes = [str(i) for i in range(952)]
         self.data = []  # Will store image data
         self.labels = []  # Will store labels
+        self.string_labels = []  # Will store string labels
+
+        self.string_label_data = pd.read_csv(self.dict_file_path, sep=" ", header=0, names=['label', 'character', 'JISx0208', 'UTF8', 'Cangjie']).to_numpy()
+
 
         # Load all images into memory
         for class_idx, class_name in enumerate(self.classes):
@@ -35,10 +40,12 @@ class ETL952Dataset(Dataset):
                     image_array = np.array(image)
                     self.data.append(image_array)
                     self.labels.append(class_idx)
+                    self.string_labels.append(self.string_label_data[class_idx][4])
 
         # Convert to numpy arrays
         self.data = np.array(self.data)
         self.labels = np.array(self.labels)
+        self.string_labels = np.array(self.string_labels)
 
     def __len__(self):
         return len(self.labels)
@@ -46,6 +53,7 @@ class ETL952Dataset(Dataset):
     def __getitem__(self, idx):
         image = self.data[idx]
         label = self.labels[idx]
+        string_label = self.string_labels[idx]
 
         # Convert numpy array to PIL Image
         image = Image.fromarray(image)
@@ -53,7 +61,7 @@ class ETL952Dataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return image, label
+        return image, label, string_label
 
 class ETL952Train(ETL952Dataset):
     def __init__(self, root_dir, transform=None):
@@ -65,15 +73,7 @@ class ETL952Val(ETL952Dataset):
     def __init__(self, root_dir, transform=None):
         super(ETL952Val, self).__init__(root_dir, folder_name="952_val", transform=transform)
 
-import pandas as pd
-class ETL952Labels():
-    
-    def __init__(self,path=os.path.join("data","etl_952_singlechar_size_64","etl_952_singlechar_size_64","952_labels.txt")):
-        self.path=path
-        self.data=pd.read_csv(path,sep=" ",header=0,names=['label', 'character', 'JISx0208', 'UTF8', 'Cangjie'])
-        self.data=self.data.to_numpy()
-        # for i in range(len(self.data)):
-        #     self.data[i][4]=(self.data[i][4]+"      ")[:5]
+
 
 
 # from torch.utils.data import DataLoader
